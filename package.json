@@ -1,0 +1,19 @@
+{
+  "name": "elm-labirinth",
+  "version": "1.0.0",
+  "description": "",
+  "main": "elm.js",
+  "scripts": {
+    "watch": "chokidar '**/*.elm' -c 'elm make --debug src/Main.elm --output elm.js' --initial"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Firebain/elm-labyrinth.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Firebain/elm-labyrinth/issues"
+  },
+  "homepage": "https://github.com/Firebain/elm-labyrinth#readme"
+}
