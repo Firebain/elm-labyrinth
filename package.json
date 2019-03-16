@@ -6,7 +6,7 @@
   "scripts": {
     "prod": "webpack --mode production",
     "dev": "webpack --mode development",
-    "watch": "webpack-dev-server --port 3000"
+    "watch": "webpack-dev-server --mode development --progress --colors --inline --hot --open --port 3000"
   },
   "repository": {
     "type": "git",

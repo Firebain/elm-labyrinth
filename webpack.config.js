@@ -5,7 +5,7 @@ module.exports = (env, argv) => {
     entry: './src/index.js',
 
     output: {
-      path: __dirname + '/public',
+      path: __dirname + '/docs',
       filename: 'app.js'
     },
 
@@ -32,7 +32,7 @@ module.exports = (env, argv) => {
     },
 
     devServer: {
-      contentBase: './public',
+      contentBase: './docs',
       hot: true,
       inline: true,
       stats: 'errors-only'
