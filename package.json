@@ -2,9 +2,11 @@
   "name": "elm-labirinth",
   "version": "1.0.0",
   "description": "",
-  "main": "elm.js",
+  "main": "src/index.js",
   "scripts": {
-    "watch": "chokidar '**/*.elm' -c 'elm make --debug src/Main.elm --output elm.js' --initial"
+    "prod": "webpack --mode production",
+    "watch": "webpack --watch --mode development",
+    "dev": "webpack-dev-server --port 3000"
   },
   "repository": {
     "type": "git",
@@ -15,5 +17,11 @@
   "bugs": {
     "url": "https://github.com/Firebain/elm-labyrinth/issues"
   },
-  "homepage": "https://github.com/Firebain/elm-labyrinth#readme"
+  "homepage": "https://github.com/Firebain/elm-labyrinth#readme",
+  "devDependencies": {
+    "elm-webpack-loader": "^5.0.0",
+    "webpack": "^4.29.6",
+    "webpack-cli": "^3.3.0",
+    "webpack-dev-server": "^3.2.1"
+  }
 }
