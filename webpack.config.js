@@ -1,18 +1,18 @@
 module.exports = (env, argv) => {
- let isProduction = argv.mode === "production"
+  let isProduction = argv.mode === "production"
 
- return {
+  return {
     entry: './src/index.js',
-  
+
     output: {
       path: __dirname + '/public',
       filename: 'app.js'
     },
-  
+
     resolve: {
       extensions: ['.js', '.elm']
     },
-  
+
     module: {
       rules: [
         {
@@ -21,16 +21,16 @@ module.exports = (env, argv) => {
           use: {
             loader: 'elm-webpack-loader',
             options: {
-                optimize: isProduction,
-                debug: !isProduction
+              optimize: isProduction,
+              debug: !isProduction
             }
           }
         }
       ],
-  
+
       noParse: /\.elm$/
     },
-  
+
     devServer: {
       contentBase: './public',
       hot: true,

@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "prod": "webpack --mode production",
-    "watch": "webpack --watch --mode development",
-    "dev": "webpack-dev-server --port 3000"
+    "dev": "webpack --mode development",
+    "watch": "webpack-dev-server --port 3000"
   },
   "repository": {
     "type": "git",
@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/Firebain/elm-labyrinth#readme",
   "devDependencies": {
+    "elm-canvas": "^2.2.0",
     "elm-webpack-loader": "^5.0.0",
     "webpack": "^4.29.6",
     "webpack-cli": "^3.3.0",
