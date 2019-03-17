@@ -3,9 +3,10 @@ module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
 import Browser
 import Canvas exposing (..)
 import Color
-import Html exposing (Html, div)
+import Html exposing (Html, div, text)
 import Html.Attributes exposing (style)
-import Map exposing (..)
+import Map exposing (Map, Terrain(..))
+import Time
 
 
 main =
@@ -16,21 +17,41 @@ main =
 --MODEL
 
 
+type alias LabirinthCreator =
+    { current : { x : Int, y : Int } }
+
+
+type Status
+    = Idle
+    | Running LabirinthCreator
+    | Error String
+
+
 elementsCount =
-    10
+    20
 
 
 type Msg
-    = NoOp
+    = NextStep LabirinthCreator Time.Posix
 
 
 type alias Model =
-    { map : Map }
+    { map : Map, status : Status }
+
+
+clone : Int -> Map -> Map
+clone val map =
+    map
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Model (initMap elementsCount Wall), Cmd.none )
+    case Map.init elementsCount Wall of
+        Ok map ->
+            ( Model map (Running <| LabirinthCreator <| { x = 0, y = 0 }), Cmd.none )
+
+        Err val ->
+            ( Model [] (Error val), Cmd.none )
 
 
 
@@ -40,8 +61,23 @@ init _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
+        NextStep creator time ->
+            let
+                x =
+                    creator.current.x
+
+                y =
+                    creator.current.y
+
+                map =
+                    model.map |> Map.set x y Ground
+
+                status =
+                    Running <| LabirinthCreator <| { x = x + 1, y = y + 1 }
+            in
+            ( { model | map = map, status = status }
+            , Cmd.none
+            )
 
 
 
@@ -50,7 +86,12 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    case model.status of
+        Running creator ->
+            Time.every 1000 (NextStep creator)
+
+        _ ->
+            Sub.none
 
 
 
@@ -58,7 +99,7 @@ subscriptions model =
 
 
 elementSize =
-    25
+    15
 
 
 mapSize =
@@ -67,6 +108,11 @@ mapSize =
 
 view : Model -> Html Msg
 view model =
-    Canvas.toHtml ( mapSize, mapSize )
-        []
-        (renderMap model.map elementSize)
+    case model.status of
+        Error val ->
+            text val
+
+        _ ->
+            Canvas.toHtml ( mapSize, mapSize )
+                []
+                (Map.render elementSize model.map)
