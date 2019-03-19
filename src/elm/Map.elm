@@ -1,8 +1,8 @@
-module Map exposing (Map, Terrain(..), init, render, set)
+module Map exposing (Map, NeighborInfo, Terrain(..), getNeighbors, init, render, set)
 
+import Array exposing (Array)
 import Canvas exposing (Point, Renderable, fill, rect, shapes)
 import Color
-import List.Extra
 
 
 type Terrain
@@ -10,24 +10,23 @@ type Terrain
     | Wall
 
 
-type alias NeighborsInfo =
-    List
-        { coords :
-            { x : Int
-            , y : Int
-            }
-        , terrain : Maybe Terrain
+type alias NeighborInfo =
+    { coords :
+        { x : Int
+        , y : Int
         }
+    , terrain : Maybe Terrain
+    }
 
 
 type alias Map =
-    List Terrain
+    Array Terrain
 
 
 init : Int -> Terrain -> Result String Map
 init size terr =
     if modBy 2 size == 0 then
-        Ok <| List.repeat (size * size) terr
+        Ok <| Array.repeat (size * size) terr
 
     else
         Err "The size should be even"
@@ -39,12 +38,43 @@ init size terr =
 
 set : Int -> Int -> Terrain -> Map -> Map
 set x y terr map =
-    List.Extra.setAt (x + y * getSize map) terr map
+    Array.set (x + y * getSize map) terr map
 
 
 getSize : Map -> Int
 getSize map =
-    round <| sqrt <| toFloat <| List.length map
+    round <| sqrt <| toFloat <| Array.length map
+
+
+getNeighbors : Int -> Int -> Map -> List NeighborInfo
+getNeighbors x y map =
+    Array.empty
+        |> Array.push (getNeighbor (x - 1) y map)
+        |> Array.push (getNeighbor (x + 1) y map)
+        |> Array.push (getNeighbor x (y - 1) map)
+        |> Array.push (getNeighbor x (y + 1) map)
+        |> Array.toList
+
+
+getNeighbor : Int -> Int -> Map -> NeighborInfo
+getNeighbor x y map =
+    let
+        coords =
+            { x = x, y = y }
+
+        isNegative =
+            x < 0 || y < 0
+    in
+    if not isNegative then
+        case Array.get (x + y * getSize map) map of
+            Just val ->
+                NeighborInfo coords (Just val)
+
+            Nothing ->
+                NeighborInfo coords Nothing
+
+    else
+        NeighborInfo coords Nothing
 
 
 
@@ -57,7 +87,7 @@ render elementSize map =
         size =
             getSize map
     in
-    List.indexedMap (renderElement elementSize size) map
+    Array.toList <| Array.indexedMap (renderElement elementSize size) map
 
 
 renderElement : Float -> Int -> Int -> Terrain -> Renderable
