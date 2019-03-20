@@ -86,13 +86,45 @@ update msg model =
                         map =
                             model.map |> Map.set coords.x coords.y Ground |> Map.set ((creator.current.x + coords.x) // 2) ((creator.current.y + coords.y) // 2) Ground
 
+                        filteredList =
+                            list
+                                |> List.filter (\el -> el.coords.x /= val.coords.x || el.coords.y /= val.coords.y)
+                                |> List.filter (\el -> not (List.any (\unv -> el.coords.x == unv.coords.x && el.coords.y == unv.coords.y) creator.unvisited))
+
                         status =
-                            Running <| LabirinthCreator { x = coords.x, y = coords.y } (Map.getNextNeighbors coords.x coords.y map) (List.append creator.unvisited list)
+                            Running <| LabirinthCreator { x = coords.x, y = coords.y } (Map.getNextNeighbors coords.x coords.y map) (List.append creator.unvisited filteredList)
                     in
                     ( { model | map = map, status = status }, Cmd.none )
 
                 Nothing ->
-                    ( { model | status = Idle }, Cmd.none )
+                    case List.head creator.unvisited of
+                        Just val ->
+                            let
+                                newUnvisited =
+                                    List.drop 1 creator.unvisited
+
+                                findGround el =
+                                    case el.terrain of
+                                        Just terr ->
+                                            terr == Ground
+
+                                        Nothing ->
+                                            False
+
+                                current =
+                                    Map.getNextNeighbors val.coords.x val.coords.y model.map
+                                        |> List.filter findGround
+                                        |> List.head
+                            in
+                            case current of
+                                Just curr ->
+                                    ( { model | status = Running <| LabirinthCreator { x = curr.coords.x, y = curr.coords.y } (Map.getNextNeighbors curr.coords.x curr.coords.y model.map) newUnvisited }, Cmd.none )
+
+                                Nothing ->
+                                    ( { model | status = Idle }, Cmd.none )
+
+                        Nothing ->
+                            ( { model | status = Idle }, Cmd.none )
 
 
 getNextDirection : LabirinthCreator -> Map -> Generator ( Maybe NeighborInfo, List NeighborInfo )
