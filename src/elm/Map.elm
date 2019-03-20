@@ -1,4 +1,4 @@
-module Map exposing (Map, NeighborInfo, Terrain(..), getNeighbors, init, render, set)
+module Map exposing (Map, NeighborInfo, Terrain(..), getAllNeighbors, getClosestNeighbors, getNextNeighbors, init, render, set)
 
 import Array exposing (Array)
 import Canvas exposing (Point, Renderable, fill, rect, shapes)
@@ -46,13 +46,37 @@ getSize map =
     round <| sqrt <| toFloat <| Array.length map
 
 
-getNeighbors : Int -> Int -> Map -> List NeighborInfo
-getNeighbors x y map =
+getClosestNeighbors : Int -> Int -> Map -> List NeighborInfo
+getClosestNeighbors x y map =
     Array.empty
         |> Array.push (getNeighbor (x - 1) y map)
         |> Array.push (getNeighbor (x + 1) y map)
         |> Array.push (getNeighbor x (y - 1) map)
         |> Array.push (getNeighbor x (y + 1) map)
+        |> Array.toList
+
+
+getNextNeighbors : Int -> Int -> Map -> List NeighborInfo
+getNextNeighbors x y map =
+    Array.empty
+        |> Array.push (getNeighbor (x - 2) y map)
+        |> Array.push (getNeighbor (x + 2) y map)
+        |> Array.push (getNeighbor x (y - 2) map)
+        |> Array.push (getNeighbor x (y + 2) map)
+        |> Array.toList
+
+
+getAllNeighbors : Int -> Int -> Map -> List NeighborInfo
+getAllNeighbors x y map =
+    Array.empty
+        |> Array.push (getNeighbor (x - 1) y map)
+        |> Array.push (getNeighbor (x + 1) y map)
+        |> Array.push (getNeighbor x (y - 1) map)
+        |> Array.push (getNeighbor x (y + 1) map)
+        |> Array.push (getNeighbor (x - 1) (y - 1) map)
+        |> Array.push (getNeighbor (x + 1) (y - 1) map)
+        |> Array.push (getNeighbor (x - 1) (y + 1) map)
+        |> Array.push (getNeighbor (x + 1) (y + 1) map)
         |> Array.toList
 
 
@@ -64,8 +88,14 @@ getNeighbor x y map =
 
         isNegative =
             x < 0 || y < 0
+
+        size =
+            getSize map - 1
+
+        isOutOfMap =
+            x > size || y > size
     in
-    if not isNegative then
+    if not isNegative && not isOutOfMap then
         case Array.get (x + y * getSize map) map of
             Just val ->
                 NeighborInfo coords (Just val)

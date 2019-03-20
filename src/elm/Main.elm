@@ -20,29 +20,8 @@ main =
 --MODEL
 
 
-directionGenerator : Generator Direction
-directionGenerator =
-    Random.map directionParser (Random.int 0 3)
-
-
-directionParser : Int -> Direction
-directionParser n =
-    case n of
-        0 ->
-            Up
-
-        1 ->
-            Down
-
-        2 ->
-            Left
-
-        _ ->
-            Right
-
-
 type alias LabirinthCreator =
-    { current : { x : Int, y : Int }, neighbors : List NeighborInfo }
+    { current : { x : Int, y : Int }, neighbors : List NeighborInfo, unvisited : List NeighborInfo }
 
 
 type Status
@@ -57,7 +36,7 @@ elementsCount =
 
 type Msg
     = NextStep LabirinthCreator Time.Posix
-    | Move LabirinthCreator (Maybe NeighborInfo)
+    | Move LabirinthCreator ( Maybe NeighborInfo, List NeighborInfo )
 
 
 type alias Model =
@@ -68,14 +47,14 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     let
         x =
-            0
+            1
 
         y =
             1
     in
     case Map.init elementsCount Wall of
         Ok map ->
-            ( Model (map |> Map.set x y Ground) (Running <| LabirinthCreator { x = x, y = y } (Map.getNeighbors x y map)), Cmd.none )
+            ( Model (map |> Map.set x y Ground) (Running <| LabirinthCreator { x = x, y = y } (Map.getNextNeighbors x y map) []), Cmd.none )
 
         Err val ->
             ( Model Array.empty (Error val), Cmd.none )
@@ -90,21 +69,25 @@ update msg model =
     case msg of
         NextStep creator time ->
             ( model
-            , Random.generate (Move creator) (getNextDirection creator)
+            , Random.generate (Move creator) (getNextDirection creator model.map)
             )
 
         Move creator next ->
-            case next of
+            let
+                ( info, list ) =
+                    next
+            in
+            case info of
                 Just val ->
                     let
                         coords =
                             val.coords
 
                         map =
-                            model.map |> Map.set coords.x coords.y Ground
+                            model.map |> Map.set coords.x coords.y Ground |> Map.set ((creator.current.x + coords.x) // 2) ((creator.current.y + coords.y) // 2) Ground
 
                         status =
-                            Running <| LabirinthCreator { x = coords.x, y = coords.y } (Map.getNeighbors coords.x coords.y map)
+                            Running <| LabirinthCreator { x = coords.x, y = coords.y } (Map.getNextNeighbors coords.x coords.y map) (List.append creator.unvisited list)
                     in
                     ( { model | map = map, status = status }, Cmd.none )
 
@@ -112,29 +95,41 @@ update msg model =
                     ( { model | status = Idle }, Cmd.none )
 
 
-getNextDirection : LabirinthCreator -> Generator (Maybe NeighborInfo)
-getNextDirection creator =
+getNextDirection : LabirinthCreator -> Map -> Generator ( Maybe NeighborInfo, List NeighborInfo )
+getNextDirection creator map =
     let
         neighbors =
-            getCorrectNeighbors creator
+            getCorrectNeighbors creator map
     in
-    Random.map (\n -> Array.get n neighbors) (Random.int 0 (Array.length neighbors - 1))
+    Random.map (\n -> ( Array.get n neighbors, Array.toList neighbors )) (Random.int 0 (Array.length neighbors - 1))
 
 
-getCorrectNeighbors : LabirinthCreator -> Array NeighborInfo
-getCorrectNeighbors creator =
+getCorrectNeighbors : LabirinthCreator -> Map -> Array NeighborInfo
+getCorrectNeighbors creator map =
     creator.neighbors
-        |> List.filter isCorrectWay
+        |> List.filter (isCorrectWay map creator)
         |> Array.fromList
 
 
-isCorrectWay : NeighborInfo -> Bool
-isCorrectWay neighbor =
+isCorrectWay : Map -> LabirinthCreator -> NeighborInfo -> Bool
+isCorrectWay map creator neighbor =
     case neighbor.terrain of
         Just val ->
             case val of
                 Wall ->
-                    True
+                    let
+                        neighbors =
+                            Map.getClosestNeighbors neighbor.coords.x neighbor.coords.y map
+                                |> List.filter (\el -> el.coords.x /= creator.current.x || el.coords.y /= creator.current.y)
+                                |> List.map (\el -> el.terrain)
+
+                        hasEmptyTerrain =
+                            List.member Nothing neighbors
+
+                        hasVisitedTerrain =
+                            List.member (Just Ground) neighbors
+                    in
+                    not hasEmptyTerrain && not hasVisitedTerrain
 
                 Ground ->
                     False
@@ -151,7 +146,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.status of
         Running creator ->
-            Time.every 1000 (NextStep creator)
+            Time.every 100 (NextStep creator)
 
         _ ->
             Sub.none
