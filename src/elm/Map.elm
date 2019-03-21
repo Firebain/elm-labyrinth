@@ -1,4 +1,4 @@
-module Map exposing (Map, NeighborInfo, Terrain(..), getAllNeighbors, getClosestNeighbors, getNextNeighbors, init, render, set)
+module Map exposing (Map, NeighborInfo, Terrain(..), getClosestNeighbors, getNextNeighbors, init, render, set)
 
 import Array exposing (Array)
 import Canvas exposing (Point, Renderable, fill, rect, shapes)
@@ -25,11 +25,11 @@ type alias Map =
 
 init : Int -> Terrain -> Result String Map
 init size terr =
-    if modBy 2 size == 0 then
+    if modBy 2 size == 1 then
         Ok <| Array.repeat (size * size) terr
 
     else
-        Err "The size should be even"
+        Err "The size should be odd"
 
 
 
@@ -48,36 +48,21 @@ getSize map =
 
 getClosestNeighbors : Int -> Int -> Map -> List NeighborInfo
 getClosestNeighbors x y map =
-    Array.empty
-        |> Array.push (getNeighbor (x - 1) y map)
-        |> Array.push (getNeighbor (x + 1) y map)
-        |> Array.push (getNeighbor x (y - 1) map)
-        |> Array.push (getNeighbor x (y + 1) map)
-        |> Array.toList
+    getNeighborsFromRange 1 x y map
 
 
 getNextNeighbors : Int -> Int -> Map -> List NeighborInfo
 getNextNeighbors x y map =
-    Array.empty
-        |> Array.push (getNeighbor (x - 2) y map)
-        |> Array.push (getNeighbor (x + 2) y map)
-        |> Array.push (getNeighbor x (y - 2) map)
-        |> Array.push (getNeighbor x (y + 2) map)
-        |> Array.toList
+    getNeighborsFromRange 2 x y map
 
 
-getAllNeighbors : Int -> Int -> Map -> List NeighborInfo
-getAllNeighbors x y map =
-    Array.empty
-        |> Array.push (getNeighbor (x - 1) y map)
-        |> Array.push (getNeighbor (x + 1) y map)
-        |> Array.push (getNeighbor x (y - 1) map)
-        |> Array.push (getNeighbor x (y + 1) map)
-        |> Array.push (getNeighbor (x - 1) (y - 1) map)
-        |> Array.push (getNeighbor (x + 1) (y - 1) map)
-        |> Array.push (getNeighbor (x - 1) (y + 1) map)
-        |> Array.push (getNeighbor (x + 1) (y + 1) map)
-        |> Array.toList
+getNeighborsFromRange : Int -> Int -> Int -> Map -> List NeighborInfo
+getNeighborsFromRange range x y map =
+    getNeighbor (x - range) y map
+        :: getNeighbor (x + range) y map
+        :: getNeighbor x (y - range) map
+        :: getNeighbor x (y + range) map
+        :: []
 
 
 getNeighbor : Int -> Int -> Map -> NeighborInfo
@@ -111,17 +96,13 @@ getNeighbor x y map =
 -- RENDER
 
 
-render : Float -> Map -> List Renderable
-render elementSize map =
-    let
-        size =
-            getSize map
-    in
-    Array.toList <| Array.indexedMap (renderElement elementSize size) map
+render : Float -> Int -> Int -> Map -> List Renderable
+render elementSize x y map =
+    Array.toList <| Array.indexedMap (renderElement elementSize (getSize map) x y) map
 
 
-renderElement : Float -> Int -> Int -> Terrain -> Renderable
-renderElement elementSize size index terr =
+renderElement : Float -> Int -> Int -> Int -> Int -> Terrain -> Renderable
+renderElement elementSize size currX currY index terr =
     let
         x =
             modBy size index
@@ -130,12 +111,16 @@ renderElement elementSize size index terr =
             index // size
 
         color =
-            case terr of
-                Wall ->
-                    Color.black
+            if currX == x && currY == y then
+                Color.green
 
-                Ground ->
-                    Color.white
+            else
+                case terr of
+                    Wall ->
+                        Color.black
+
+                    Ground ->
+                        Color.white
     in
     shapes [ fill color ]
         [ rect (calculateGlobalPoint elementSize x y) elementSize elementSize ]
