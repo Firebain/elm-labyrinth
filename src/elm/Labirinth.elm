@@ -1,39 +1,39 @@
 module Labirinth exposing (LabirinthCreator, getNextDirectionGenerator, goToUnvisited, move)
 
 import Array exposing (Array)
-import Map exposing (Map, NeighborInfo, Terrain(..))
+import List.Extra
+import Map exposing (Map, NeighborInfo, Terrain(..), Vector2D)
 import Random exposing (Generator)
-import Utilities
 
 
 type alias LabirinthCreator =
-    { current : { x : Int, y : Int }, neighbors : List NeighborInfo, unvisited : List NeighborInfo }
+    { current : Vector2D, map : Map, neighbors : List NeighborInfo, unvisited : List NeighborInfo }
 
 
-getNextDirectionGenerator : LabirinthCreator -> Map -> Generator ( Maybe NeighborInfo, List NeighborInfo )
-getNextDirectionGenerator creator map =
+getNextDirectionGenerator : LabirinthCreator -> Generator ( Maybe NeighborInfo, List NeighborInfo )
+getNextDirectionGenerator creator =
     let
         neighbors =
-            getCorrectNeighbors creator map
+            getCorrectNeighbors creator
     in
-    Random.map (\n -> ( Utilities.listGetAt n neighbors, neighbors )) (Random.int 0 (List.length neighbors - 1))
+    Random.map (\n -> ( List.Extra.getAt n neighbors, neighbors )) (Random.int 0 (List.length neighbors - 1))
 
 
-getCorrectNeighbors : LabirinthCreator -> Map -> List NeighborInfo
-getCorrectNeighbors creator map =
+getCorrectNeighbors : LabirinthCreator -> List NeighborInfo
+getCorrectNeighbors creator =
     creator.neighbors
-        |> List.filter (isCorrectWay map creator)
+        |> List.filter (isCorrectWay creator)
 
 
-isCorrectWay : Map -> LabirinthCreator -> NeighborInfo -> Bool
-isCorrectWay map creator neighbor =
+isCorrectWay : LabirinthCreator -> NeighborInfo -> Bool
+isCorrectWay creator neighbor =
     case neighbor.terrain of
         Just val ->
             case val of
                 Wall ->
                     let
                         neighbors =
-                            Map.getClosestNeighbors neighbor.coords.x neighbor.coords.y map
+                            Map.getClosestNeighbors neighbor.coords.x neighbor.coords.y creator.map
                                 |> List.filter (\el -> el.coords.x /= creator.current.x || el.coords.y /= creator.current.y)
                                 |> List.map (\el -> el.terrain)
 
@@ -52,14 +52,14 @@ isCorrectWay map creator neighbor =
             False
 
 
-move : NeighborInfo -> List NeighborInfo -> Map -> LabirinthCreator -> ( LabirinthCreator, Map )
-move destination neighbors map creator =
+move : NeighborInfo -> List NeighborInfo -> LabirinthCreator -> LabirinthCreator
+move destination neighbors creator =
     let
         coords =
             destination.coords
 
         updatedMap =
-            map
+            creator.map
                 |> Map.set coords.x coords.y Ground
                 |> Map.set ((creator.current.x + coords.x) // 2) ((creator.current.y + coords.y) // 2) Ground
 
@@ -68,13 +68,11 @@ move destination neighbors map creator =
                 |> List.filter (\el -> el.coords.x /= coords.x || el.coords.y /= coords.y)
                 |> List.filter (\el -> not (List.any (\unv -> el.coords.x == unv.coords.x && el.coords.y == unv.coords.y) creator.unvisited))
     in
-    ( LabirinthCreator { x = coords.x, y = coords.y } (Map.getNextNeighbors coords.x coords.y map) (List.append creator.unvisited filteredNeighbors)
-    , updatedMap
-    )
+    LabirinthCreator { x = coords.x, y = coords.y } updatedMap (Map.getNextNeighbors coords.x coords.y updatedMap) (List.append creator.unvisited filteredNeighbors)
 
 
-goToUnvisited : Map -> LabirinthCreator -> Maybe LabirinthCreator
-goToUnvisited map creator =
+goToUnvisited : LabirinthCreator -> Maybe LabirinthCreator
+goToUnvisited creator =
     case List.head creator.unvisited of
         Just unvisited ->
             let
@@ -90,13 +88,13 @@ goToUnvisited map creator =
                             False
 
                 current =
-                    Map.getNextNeighbors unvisited.coords.x unvisited.coords.y map
+                    Map.getNextNeighbors unvisited.coords.x unvisited.coords.y creator.map
                         |> List.filter hasGround
                         |> List.head
             in
             case current of
                 Just curr ->
-                    Just <| LabirinthCreator { x = curr.coords.x, y = curr.coords.y } (Map.getNextNeighbors curr.coords.x curr.coords.y map) newUnvisited
+                    Just <| LabirinthCreator { x = curr.coords.x, y = curr.coords.y } creator.map (Map.getNextNeighbors curr.coords.x curr.coords.y creator.map) newUnvisited
 
                 Nothing ->
                     Nothing

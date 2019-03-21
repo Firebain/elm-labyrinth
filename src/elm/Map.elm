@@ -1,8 +1,13 @@
-module Map exposing (Map, NeighborInfo, Terrain(..), getClosestNeighbors, getNextNeighbors, init, render, set)
+module Map exposing (Map, NeighborInfo, Terrain(..), Vector2D, getClosestNeighbors, getNextNeighbors, init, render, set)
 
 import Array exposing (Array)
 import Canvas exposing (Point, Renderable, fill, rect, shapes)
 import Color
+import List.Extra
+
+
+type alias Vector2D =
+    { x : Int, y : Int }
 
 
 type Terrain
@@ -11,22 +16,19 @@ type Terrain
 
 
 type alias NeighborInfo =
-    { coords :
-        { x : Int
-        , y : Int
-        }
+    { coords : Vector2D
     , terrain : Maybe Terrain
     }
 
 
 type alias Map =
-    Array Terrain
+    List Terrain
 
 
 init : Int -> Terrain -> Result String Map
 init size terr =
     if modBy 2 size == 1 then
-        Ok <| Array.repeat (size * size) terr
+        Ok <| List.repeat (size * size) terr
 
     else
         Err "The size should be odd"
@@ -38,12 +40,12 @@ init size terr =
 
 set : Int -> Int -> Terrain -> Map -> Map
 set x y terr map =
-    Array.set (x + y * getSize map) terr map
+    List.Extra.setAt (x + y * getSize map) terr map
 
 
 getSize : Map -> Int
 getSize map =
-    round <| sqrt <| toFloat <| Array.length map
+    round <| sqrt <| toFloat <| List.length map
 
 
 getClosestNeighbors : Int -> Int -> Map -> List NeighborInfo
@@ -81,7 +83,7 @@ getNeighbor x y map =
             x > size || y > size
     in
     if not isNegative && not isOutOfMap then
-        case Array.get (x + y * getSize map) map of
+        case List.Extra.getAt (x + y * getSize map) map of
             Just val ->
                 NeighborInfo coords (Just val)
 
@@ -96,13 +98,13 @@ getNeighbor x y map =
 -- RENDER
 
 
-render : Float -> Int -> Int -> Map -> List Renderable
-render elementSize x y map =
-    Array.toList <| Array.indexedMap (renderElement elementSize (getSize map) x y) map
+render : Float -> Maybe Vector2D -> Map -> List Renderable
+render elementSize point map =
+    List.indexedMap (renderElement elementSize (getSize map) point) map
 
 
-renderElement : Float -> Int -> Int -> Int -> Int -> Terrain -> Renderable
-renderElement elementSize size currX currY index terr =
+renderElement : Float -> Int -> Maybe Vector2D -> Int -> Terrain -> Renderable
+renderElement elementSize size current index terr =
     let
         x =
             modBy size index
@@ -110,8 +112,16 @@ renderElement elementSize size currX currY index terr =
         y =
             index // size
 
+        currentEq =
+            case current of
+                Just curr ->
+                    curr.x == x && curr.y == y
+
+                Nothing ->
+                    False
+
         color =
-            if currX == x && currY == y then
+            if currentEq then
                 Color.green
 
             else

@@ -7,7 +7,7 @@ import Color
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (style)
 import Labirinth exposing (LabirinthCreator, getNextDirectionGenerator)
-import Map exposing (Map, NeighborInfo, Terrain(..))
+import Map exposing (Map, NeighborInfo, Terrain(..), Vector2D)
 import Random exposing (Generator)
 import Time
 
@@ -21,7 +21,7 @@ main =
 
 
 type Status
-    = Idle
+    = Idle Map
     | Running LabirinthCreator
     | Error String
 
@@ -31,7 +31,7 @@ elementsCount =
 
 
 type alias Model =
-    { map : Map, status : Status, current : { x : Int, y : Int } }
+    { status : Status }
 
 
 init : () -> ( Model, Cmd Msg )
@@ -42,15 +42,12 @@ init _ =
     in
     case Map.init elementsCount Wall of
         Ok map ->
-            ( { map = map |> Map.set x y Ground
-              , status = Running <| LabirinthCreator { x = x, y = y } (Map.getNextNeighbors x y map) []
-              , current = { x = x, y = y }
-              }
+            ( { status = Running <| LabirinthCreator { x = x, y = y } (map |> Map.set x y Ground) (Map.getNextNeighbors x y map) [] }
             , Cmd.none
             )
 
         Err val ->
-            ( Model Array.empty (Error val) { x = x, y = y }, Cmd.none )
+            ( Model (Error val), Cmd.none )
 
 
 
@@ -67,7 +64,7 @@ update msg model =
     case msg of
         NextStep creator time ->
             ( model
-            , Random.generate (Move creator) (getNextDirectionGenerator creator model.map)
+            , Random.generate (Move creator) (getNextDirectionGenerator creator)
             )
 
         Move creator next ->
@@ -78,24 +75,21 @@ update msg model =
             case info of
                 Just val ->
                     let
-                        ( updatedCreator, map ) =
-                            Labirinth.move val list model.map creator
+                        updatedCreator =
+                            Labirinth.move val list creator
 
                         status =
                             Running <| updatedCreator
-
-                        current =
-                            { x = updatedCreator.current.x, y = updatedCreator.current.y }
                     in
-                    ( { model | map = map, status = status, current = current }, Cmd.none )
+                    ( { model | status = status }, Cmd.none )
 
                 Nothing ->
-                    case Labirinth.goToUnvisited model.map creator of
+                    case Labirinth.goToUnvisited creator of
                         Just updatedCreator ->
-                            ( { model | status = Running <| updatedCreator, current = { x = updatedCreator.current.x, y = updatedCreator.current.y } }, Cmd.none )
+                            ( { model | status = Running <| updatedCreator }, Cmd.none )
 
                         Nothing ->
-                            ( { model | status = Idle }, Cmd.none )
+                            ( { model | status = Idle creator.map }, Cmd.none )
 
 
 
@@ -128,17 +122,17 @@ view : Model -> Html Msg
 view model =
     case model.status of
         Running creator ->
-            renderCanvas model
+            renderCanvas (Just creator.current) creator.map
 
-        Idle ->
-            renderCanvas model
+        Idle map ->
+            renderCanvas Nothing map
 
         Error val ->
             text val
 
 
-renderCanvas : Model -> Html Msg
-renderCanvas model =
+renderCanvas : Maybe Vector2D -> Map -> Html Msg
+renderCanvas point map =
     Canvas.toHtml ( mapSize, mapSize )
         []
-        (Map.render elementSize model.current.x model.current.y model.map)
+        (Map.render elementSize point map)
